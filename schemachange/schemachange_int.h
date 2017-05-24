@@ -74,6 +74,7 @@ have include each header */
 #include "sc_queues.h"
 #include "sc_records.h"
 #include "sc_schema.h"
+#include "sc_sequences.h"
 #include "sc_stripes.h"
 #include "sc_struct.h"
 #include "sc_util.h"
