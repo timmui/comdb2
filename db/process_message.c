@@ -2069,6 +2069,8 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
         char *name = "tst";
 
         if (tokcmp(tok, ltok, "add") == 0) {
+            name = segtok(line, lline, &st, &ltok);
+
             if (!add_sequence(name, 0, 10, -1, true, 0, 100)) {
                 logmsg(LOGMSG_USER, "Created sequence \"%s\"\n", name);
             } else {
@@ -2077,6 +2079,8 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
         }
 
         else if (tokcmp(tok, ltok, "drop") == 0) {
+            name = segtok(line, lline, &st, &ltok);
+            
             if (!drop_sequence(name)) {
                 logmsg(LOGMSG_USER, "Deleted sequence \"%s\"\n", name);
             } else {
@@ -2084,7 +2088,20 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
             }
         }
 
+        else if (tokcmp(tok, ltok, "dropall") == 0) {
+            while (thedb->num_sequences > 0) {
+                sequence_t *seq = thedb->sequences[0];
+
+                if (!drop_sequence(seq->name)) {
+                    logmsg(LOGMSG_USER, "Deleted sequence \"%s\"\n", seq->name);
+                } else {
+                    logmsg(LOGMSG_USER, "Failed to delete sequence\n");
+                }
+            }
+        }
+
         else if (tokcmp(tok, ltok, "next_val") == 0) {
+            name = segtok(line, lline, &st, &ltok);
             long long *val = (long long *) malloc(sizeof(long long));
 
             if (seq_next_val(name, val) == 0) {
@@ -2097,6 +2114,7 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
         }
 
         else if (tokcmp(tok, ltok, "prev_val") == 0) {
+            name = segtok(line, lline, &st, &ltok);
             long long *val = (long long *) malloc(sizeof(long long));
 
             if (seq_prev_val(name, val) == 0) {
@@ -2112,7 +2130,7 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
             int idx;
             for (idx = 0; idx < thedb->num_sequences; idx++) {
                 sequence_t *seq = thedb->sequences[idx];
-                logmsg(LOGMSG_USER,"------ Sequence %d ------\nName: %s\nNext Val: %d\nPrev Val: %d\nMin Val: %d\nMax Val: %d\nInc: %d\nCycle?: %s\nChunk Size: %d\n",
+                logmsg(LOGMSG_USER,"------ Sequence %d ------\nName: %s\nNext Val: %d\nPrev Val: %d\nMin Val: %d\nMax Val: %d\nInc: %d\nCycle?: %s\nChunk Size: %d\nLast Avail. Val: %d\n",
                     idx,
                     seq->name,
                     seq->next_val,
@@ -2121,7 +2139,8 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
                     seq->max_val,
                     seq->increment,
                     seq->cycle ? "true": "false",
-                    seq->chunk_size
+                    seq->chunk_size,
+                    seq->last_avail_val
                 );
             }
         }
