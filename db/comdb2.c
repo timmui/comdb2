@@ -5465,6 +5465,8 @@ static int llmeta_load_sequences (struct dbenv *dbenv) {
     };
 
     if (num_found_sequences == 0) {
+        logmsg(LOGMSG_DEBUG, "---------------------- No Sequences found in llmeta ----------------------\n");
+
         // Init number of sequences in memory
         dbenv->num_sequences = 0;
 
@@ -5491,6 +5493,8 @@ static int llmeta_load_sequences (struct dbenv *dbenv) {
         long long last_avail_val;
         long long chunk_size;
 
+        logmsg(LOGMSG_DEBUG, "---------------------- Loading Sequence '%s' ----------------------\n",name);
+
         // Get sequence configuration from llmeta
         rc = bdb_llmeta_get_sequence(name, &min_val, &max_val, &increment, &cycle, &start_val, &chunk_size, &bdberr);
         if (rc) {
@@ -5515,6 +5519,8 @@ static int llmeta_load_sequences (struct dbenv *dbenv) {
             return -1;
         }
         dbenv->sequences[dbenv->num_sequences++] = seq;
+
+        logmsg(LOGMSG_DEBUG, "---------------------- Loaded Sequence '%s' ----------------------\n",name);
     }
 
     return 0;
