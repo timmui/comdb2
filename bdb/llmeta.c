@@ -1512,7 +1512,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: *ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -1634,7 +1634,7 @@ static int bdb_new_file_version(
 
     if (!(llmeta_file_type_dbname_file_num_put(&file_type_dbname_file_num_key,
                                                p_key_buf, p_key_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_file_num_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_BADARGS;
@@ -1784,7 +1784,7 @@ bdb_del_file_versions_int(tran_type *trans, /* must be !NULL */
                                             p_buf_end);
 
     if (!p_buf) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_file_num_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_BADARGS;
@@ -2357,7 +2357,7 @@ static int bdb_get_file_version(
 
     if (!(p_buf = llmeta_file_type_dbname_file_num_put(
               &file_type_dbname_file_num_key, p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_file_num_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_BADARGS;
@@ -2377,7 +2377,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: *ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -2550,7 +2550,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -2772,7 +2772,7 @@ int bdb_new_csc2(tran_type *input_trans, /* if this is !NULL it will be used as
     /* trial put */
     if (!(p_buf = llmeta_file_type_dbname_csc2_vers_key_put(
               &(p_file_type_dbname_csc2_vers_key), p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_csc2_vers_key_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_MISC;
@@ -2824,7 +2824,7 @@ retry:
 
     if (!(p_buf = llmeta_file_type_dbname_csc2_vers_key_put(
               &(p_file_type_dbname_csc2_vers_key), p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_csc2_vers_key_put returns NULL\n",
                 __func__);
         goto backout;
@@ -2925,7 +2925,7 @@ int bdb_get_csc2_highest(tran_type *trans, /* transaction to use, may be NULL */
 
     if (!(p_buf = llmeta_file_type_dbname_csc2_vers_key_put(
               &(p_file_type_dbname_csc2_vers_key), p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_csc2_vers_key_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_BADARGS;
@@ -2976,7 +2976,7 @@ retry:
         p_buf_end = p_buf + key_offset + sizeof(*csc2_vers);
         if (!(p_buf = (uint8_t *)llmeta_file_type_dbname_csc2_vers_key_get(
                   &p_file_type_dbname_csc2_vers_key, p_buf, p_buf_end))) {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                   "%s: llmeta_file_type_dbname_csc2_vers_key_get returns NULL\n",
                 __func__);
             *bdberr = BDBERR_MISC;
@@ -3081,7 +3081,7 @@ int bdb_get_csc2(tran_type *tran, /* transaction to use, may be NULL */
     /* trial put */
     if (!(p_buf = llmeta_file_type_dbname_csc2_vers_key_put(
               &(p_file_type_dbname_csc2_vers_key), p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_csc2_vers_key_put returns NULL\n",
                 __func__);
         logmsg(LOGMSG_ERROR, "%s: possible tablename length error?\n", __func__);
@@ -3123,7 +3123,7 @@ retry:
 
     if (!(p_buf = llmeta_file_type_dbname_csc2_vers_key_put(
               &(p_file_type_dbname_csc2_vers_key), p_buf, p_buf_end))) {
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_dbname_csc2_vers_key_put returns NULL\n",
                 __func__);
         *bdberr = BDBERR_MISC;
@@ -3141,7 +3141,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -3230,7 +3230,7 @@ bdb_commit_temp_file_version(bdb_state_type *bdb_state, tran_type *tran,
     } else {
         newtablename = bdb_unprepend_new_prefix(bdb_state->name, bdberr);
         if (*bdberr != BDBERR_NOERROR) {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                 "%s: database name (%s) does"
                 " not start with new.SOMETHING., it is not a temporary table\n",
                 __func__, bdb_state->name);
@@ -3523,7 +3523,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: *ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -3810,7 +3810,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -3990,7 +3990,7 @@ retry:
         const uint8_t *p_buf_end = p_buf + LLMETA_IXLEN;
         if (!(p_buf = llmeta_file_type_spname_lua_vers_key_get(
                   &p_file_type_spname_lua_vers_key, p_buf, p_buf_end))) {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_spname_lua_vers_key_get returns NULL\n",
                 __func__);
             *bdberr = BDBERR_MISC;
@@ -4072,7 +4072,7 @@ retry:
         uint8_t *p_buf_end = p_buf + LLMETA_IXLEN;
         if (!(p_buf = (uint8_t *)llmeta_file_type_spname_lua_vers_key_get(
                   &p_file_type_spname_lua_vers_key, p_buf, p_buf_end))) {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                 "%s: llmeta_file_type_spname_lua_vers_key_get returns NULL\n",
                 __func__);
             *bdberr = BDBERR_MISC;
@@ -4408,7 +4408,7 @@ int bdb_set_disable_plan_genid(bdb_state_type *bdb_state, tran_type *tran,
         if (*bdberr == BDBERR_FETCH_DTA) {
             rc = bdb_lite_add(llmeta_bdb_state, tran, &genidlcl,
                               sizeof(unsigned long long), key, bdberr);
-        } 
+        }
         goto done;
     }
 
@@ -5874,7 +5874,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -6117,7 +6117,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -6181,7 +6181,7 @@ retry:
             if (++retries < 500)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s:*ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -6706,7 +6706,7 @@ retry:
                 *errstr = strdup("tablename alias already exists");
             rc = -1;
         } else {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: unrecognized error adding row rc=%d bdberr=%d!\n",
                     __func__, rc, bdberr);
             if (errstr)
@@ -6786,7 +6786,7 @@ retry:
             return NULL;
         } else if (bdberr == BDBERR_FETCH_DTA) {
 #if 0
-            No error for not found 
+            No error for not found
          /* not found, alias does not exist */
          if(errstr)
             *errstr = strdup("tablename alias does NOT exist");
@@ -6795,7 +6795,7 @@ retry:
             return NULL;
         }
 
-        logmsg(LOGMSG_ERROR, 
+        logmsg(LOGMSG_ERROR,
                 "%s: unrecognized error fetching row rc=%d bdberr=%d!\n",
                 __func__, rc, bdberr);
         if (errstr)
@@ -6856,7 +6856,7 @@ retry:
                 *errstr = strdup("tablename alias does NOT exists");
             rc = -1;
         } else {
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: unrecognized error adding row rc=%d bdberr=%d!\n",
                     __func__, rc, bdberr);
             if (errstr)
@@ -7200,7 +7200,7 @@ retry:
             if (++retries < 500 /*gbl_maxretries*/)
                 goto retry;
 
-            logmsg(LOGMSG_ERROR, 
+            logmsg(LOGMSG_ERROR,
                     "%s: *ERROR* bdb_lite_exact_fetch too much contention "
                     "%d count %d\n",
                     __func__, *bdberr, retries);
@@ -7940,6 +7940,9 @@ struct seq_data {
     /* Synchronization with llmeta */
     long long start_val; /* Next value to be dispensed from llmeta into memory */
     long long chunk_size; /* Number of values to allocate from llmeta */
+
+    /* Flags */
+    char flags; /* Flags for the sequence objeckt*/
 };
 
 static uint8_t *llmeta_sequence_key_put(struct seq_key *key, char *p_buf,
@@ -7978,6 +7981,7 @@ static uint8_t *llmeta_sequence_data_put(struct seq_data *data, char *p_buf,
     p_buf = buf_put(&data->cycle, sizeof(bool), p_buf, p_buf_end);
     p_buf = buf_put(&data->start_val, sizeof(long long), p_buf, p_buf_end);
     p_buf = buf_put(&data->chunk_size, sizeof(long long), p_buf, p_buf_end);
+    p_buf = buf_put(&data->flags, sizeof(char), p_buf, p_buf_end);
 
     return p_buf;
 }
@@ -7998,6 +8002,7 @@ static struct seq_data *llmeta_sequence_data_get(char *p_buf, char *p_buf_end) {
     p_buf = (uint8_t *)buf_get(&data->cycle, sizeof(bool), p_buf, p_buf_end);
     p_buf = (uint8_t *)buf_get(&data->start_val, sizeof(long long), p_buf, p_buf_end);
     p_buf = (uint8_t *)buf_get(&data->chunk_size, sizeof(long long), p_buf, p_buf_end);
+    p_buf = (uint8_t *)buf_get(&data->flags, sizeof(char), p_buf, p_buf_end);
 
     if (p_buf == NULL)
         goto bad_alloc;
@@ -8012,8 +8017,8 @@ bad_alloc:
 
 // TODO: Modify for sequences
 int bdb_llmeta_add_sequence(tran_type *tran, char* name, long long min_val, long long max_val,
-                         long long increment, bool cycle, long long start_val, long long chunk_size,
-                         int *bdberr) {
+                        long long increment, bool cycle, long long start_val, long long chunk_size,
+                        char flags, int *bdberr) {
     char key[LLMETA_IXLEN] = {0};
     int dtalen;
     uint8_t *p_buf, *p_buf_end;
@@ -8042,13 +8047,14 @@ int bdb_llmeta_add_sequence(tran_type *tran, char* name, long long min_val, long
     sd.increment = increment;
     sd.cycle = cycle;
     sd.chunk_size = chunk_size;
+    sd.flags = flags;
     sd.start_val = start_val;
-    
+
     dtalen = sizeof(struct seq_data);
-    
+
     p_buf = malloc(dtalen);
     p_buf_end = p_buf + dtalen;
-    
+
     // Encode data
     if (llmeta_sequence_data_put(&sd, p_buf, p_buf_end) == NULL) {
         logmsg(LOGMSG_ERROR, "%s: failed to encode sequence llmeta data\n", __func__);
@@ -8068,16 +8074,16 @@ int bdb_llmeta_add_sequence(tran_type *tran, char* name, long long min_val, long
 
 int bdb_llmeta_alter_sequence( tran_type *tran, char* name, long long min_val, long long max_val,
                            long long increment, bool cycle, long long start_val, long long chunk_size,
-                           int *bdberr) {
+                           char flags, int *bdberr) {
     int rc;
 
     /* delete and add */
     rc = bdb_llmeta_drop_sequence(tran, name, bdberr);
     if (rc)
         goto done;
-    rc = bdb_llmeta_add_sequence(tran, name, min_val, max_val, 
+    rc = bdb_llmeta_add_sequence(tran, name, min_val, max_val,
                                 increment, cycle, start_val, chunk_size,
-                                bdberr);
+                                flags, bdberr);
     if (rc)
         goto done;
 
@@ -8116,10 +8122,10 @@ done:
     return rc;
 }
 
-/** 
- * TODO: Finish Rewrite, deal with cycles
+/**
+ * TODO: Refactor start_val and next start_val (can be the same thing)
  * Get a new chunk of values from a specified sequence. Returns -1 in error
- * 
+ *
  * @param tran_type *tran Current transaction
  * @param char *name Name of sequence to grab a sequence from
  * @param long long min_val Sequence minimum value
@@ -8127,75 +8133,110 @@ done:
  * @param long long increment Sequence increment
  * @param bool cycle Whether the sequence has cyclic behaviour
  * @param long long chunk_size Size of the chunk of values to preallocate from llmeta
- * @param long long last_avail_val Previous last avaliable value
- * @param long long *new_last New last avaliable value
+ * @param char *flags Pointer to flags for the sequence
+ * @param long long *remaining_vals Pointer to next_val member in sequence_t object
+ * @param long long *next_start_val
  * @param int *bdberr BDB error
  */
 int bdb_llmeta_get_sequence_chunk(tran_type *tran, char* name, long long min_val, long long max_val,
-                           long long increment, bool cycle, long long chunk_size, long long last_avail_val,
-                           long long *new_last, int *bdberr) {
-    uint8_t key[LLMETA_IXLEN] = {0};
-    uint8_t *p_buf, *p_buf_end;
-    void *dta = NULL;
-    struct seq_key sk = {0};
+                           long long increment, bool cycle, long long chunk_size, char *flags,
+                           long long *remaining_vals, long long *next_start_val, int *bdberr) {
     long long new_start_val;
-    int foundlen;
-    int rc;
+    int rc = 0 ;
 
-    sk.file_type = LLMETA_SEQUENCE_ATTR;
-    strcpy(sk.name, name);
+    // Check if sequence is exhausted
+    if ( *flags & SEQUENCE_EXHAUSTED ){
+        logmsg(LOGMSG_ERROR, "No more sequence values for '%s'", name);
+        return -1;
+    }
+    // Check sequence rules
+    unsigned long long max_uniq_values = abs((max_val-min_val)/increment); /* Maximum unique values in sequence 8 */
+    unsigned long long values_before_cycle; /* Number of values that can be dispensed before hitting the max or min of the sequence */
 
-    p_buf = key;
-    p_buf_end = p_buf + LLMETA_IXLEN;
-    p_buf = llmeta_sequence_key_put(&sk, p_buf, p_buf_end);
-    if (p_buf == NULL) {
-        logmsg(LOGMSG_ERROR, "%s: can't encode key for sequence %s\n", __func__, name);
-        *bdberr = BDBERR_MISC;
-        rc = -1;
-        goto done;
+    if (increment > 0) {
+        // Increasing sequence
+        // TODO: overflow chck
+        values_before_cycle = abs((max_val - *next_start_val)/increment);
+
+        if (values_before_cycle < chunk_size) {
+            if (cycle) {
+                new_start_val = min_val + increment * ((chunk_size - values_before_cycle - 1) % max_uniq_values);
+                *remaining_vals = chunk_size;
+            } else if (values_before_cycle == 0 ) {
+                // Error, no more values in sequence
+                logmsg(LOGMSG_ERROR, "No more sequence values for '%s'", name);
+                // In this case, exausted sequence flag is set and
+                // the value of new_start_val will be undefined behaviour
+                *flags |= SEQUENCE_EXHAUSTED;
+                *remaining_vals = 0;
+                return -1;
+            } else {
+                new_start_val = max_val;
+                *remaining_vals = values_before_cycle + 1;
+            }
+        } else if (values_before_cycle == chunk_size) {
+            if (cycle) {
+                new_start_val = min_val;
+                *remaining_vals = chunk_size;
+            } else {
+                // No more values in sequence after this chunk is dispensed
+                // In this case, exausted sequence flag is set and
+                // the value of new_start_val will be undefined behaviour
+                *flags |= SEQUENCE_EXHAUSTED;
+                *remaining_vals = 0;
+            }
+        } else {
+            // Normal case
+            new_start_val = *next_start_val + increment * chunk_size;
+            *remaining_vals = chunk_size;
+        }
+    } else {
+        // Decreasing sequence
+        values_before_cycle = abs((*next_start_val - min_val)/increment);
+
+        if (values_before_cycle < chunk_size) {
+            if (cycle) {
+                new_start_val = max_val + increment * ((chunk_size - values_before_cycle - 1) % max_uniq_values);
+                *remaining_vals = chunk_size;
+            } else if (values_before_cycle == 0 ) {
+                // Error, no more values in sequence
+                logmsg(LOGMSG_ERROR, "No more sequence values for '%s'", name);
+                // In this case, exausted sequence flag is set and
+                // the value of new_start_val will be undefined behaviour
+                *flags |= SEQUENCE_EXHAUSTED;
+                *remaining_vals = 0;
+                return -1;
+            } else {
+                new_start_val = min_val;
+                *remaining_vals = values_before_cycle + 1;
+            }
+        } else if (values_before_cycle == chunk_size) {
+            if (cycle) {
+                new_start_val = max_val;
+                *remaining_vals = chunk_size;
+            } else {
+                // No more values in sequence after this chunk is dispensed
+                // In this case, exausted sequence flag is set and
+                // the value of new_start_val will be undefined behaviour
+                *flags |= SEQUENCE_EXHAUSTED;
+                *remaining_vals = 0;
+            }
+        } else {
+            // Normal case
+            new_start_val = *next_start_val + increment * chunk_size;
+            *remaining_vals = chunk_size;
+        }
     }
 
-    rc = bdb_lite_exact_fetch_alloc(llmeta_bdb_state, key, &dta, &foundlen,
-                                    bdberr);
-    if (rc) {
-        *bdberr == BDBERR_FETCH_DTA;
-        goto done;
-    }
-    p_buf = dta;
-    p_buf_end = p_buf + foundlen;
-    
-    // Calculate new start_val for llmeta record
-    if (!check_overflow_ll_mul(chunk_size, increment)) {
-        rc = -1;
-        goto done;
-    }
-    long long tmp = chunk_size*increment;
-
-    if (!check_overflow_ll_add(last_avail_val, tmp)) {
-        rc = -1;
-        goto done;
-    }
-
-    new_start_val = last_avail_val + tmp;
-
-    // TODO: Add all the checks
-
-    // Shift p_buf up to start_val member
-    p_buf += sizeof(int) + sizeof(long long) * 3 + sizeof(bool);
-    
     // Write new start value to llmeta
-    p_buf = buf_put(&new_start_val, sizeof(long long), p_buf, p_buf_end);
+    bdb_llmeta_alter_sequence(NULL, name, min_val, max_val, increment, cycle, new_start_val, chunk_size, *flags, bdberr);
 
-    // TODO: Return new last_avail_value (start_val - increment) 
-    *new_last = new_start_val - increment; // FIXME: Doesn't work for cycle when start_val loops back to min_val
+    // Return start value of the next chunk
+    *next_start_val = new_start_val;
 
-done:
-    if (dta)
-        free(dta);
     return rc;
 }
 
-// TODO: modify to use queue style records
 int bdb_llmeta_get_sequence_names(char **sequence_names, size_t max_seqs,
                           int *num_sequences, int *bdberr) {
     int rc;
@@ -8236,10 +8277,9 @@ int bdb_llmeta_get_sequence_names(char **sequence_names, size_t max_seqs,
     return rc;
 }
 
-// TODO: Modify for sequences
-int bdb_llmeta_get_sequence(char* name, long long *min_val, long long *max_val, 
-                        long long *increment, bool *cycle, long long *start_val, long long *chunk_size,
-                        int *bdberr) {
+int bdb_llmeta_get_sequence(char* name, long long *min_val, long long *max_val, long long *increment,
+                            bool *cycle, long long *start_val, long long *chunk_size,
+                            char *flags, int *bdberr) {
     struct seq_key sk = {0};
     struct seq_data *sd = NULL;
     uint8_t key[LLMETA_IXLEN] = {0};
@@ -8283,6 +8323,7 @@ int bdb_llmeta_get_sequence(char* name, long long *min_val, long long *max_val,
     *max_val = sd->max_val ;
     *increment = sd->increment ;
     *cycle = sd->cycle ;
+    *flags = sd->flags;
     *chunk_size = sd->chunk_size ;
     *start_val = sd->start_val ;
 
