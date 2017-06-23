@@ -499,19 +499,130 @@ columnname(A) ::= nm(A) typetoken(Y). {sqlite3AddColumn(pParse,&A,&Y);}
 
 ///////////////////// COMDB2 CREATE SEQUENCE statement ////////////////////////////
 
-cmd ::= create_sequence create_sequence_args.
-create_table ::= createkw temp(T) SEQUENCE dbnm(Z) . {
-        comdb2CreateSequence(pParse,&Y,&Z,T,0,0,E);
+%include {
+  include <limits.h>
+
+  enum {
+    SEQ_MIN_VAL,
+    SEQ_MAX_VAL,
+    SEQ_INC,
+    SEQ_CYCLE,
+    SEQ_START_VAL,
+    SEQ_CHUNK_SIZE
+  };
+
+  typedef struct {
+    int type;
+    long long data;
+  } seq_arg;
+
+  typedef struct {
+    /* Basic Attributes */
+    long long min_val; /* Values dispensed must be greater than or equal to min_val */
+    long long max_val; /* Values dispensed must be less than or equal to max_val */
+    long long increment; /* Normal difference between two consecutively dispensed values */
+    long long cycle; /* If cycling values is permitted */
+    long long chunk_size; /* Number of values to allocate from llmeta */
+    
+    long long last;
+  } sequence_args;
 }
 
-createkw(A) ::= CREATE(A).  {disableLookaside(pParse);} // TODO: Defined in tables already. do i need it here?
+cmd ::= createkw temp(T) SEQUENCE dbnm(N) create_sequence_args(A). {
+  // TODO: 
+        // comdb2CreateSequence(pParse,&Y,&Z,T,0,0,E);
+}
 
-create_sequence_args ::= create_sequence_arg create_sequence_args.
-create_sequence_args ::= .
+%type create_sequence_args {seq_args}
+create_sequence_args(A) ::= create_sequence_arg(B) create_sequence_args(C). {
+  // Defaults
+  if(C->last){
+    A->min_val = LLONG_MIN;
+    A->max_val = LLONG_MAX;
+    A->increment = 1;
+    A->cycle = 0;
+    A->chunk_size = 1;
+  } else {
+    A = C
+  }
 
-%type create_sequence_start_with {long long}
-create_sequence_start_with(A) ::= START WITH (B). {A = B;}
-create_sequence_start_with(A) ::= . {A = NULL;}
+  switch(B->type) {
+    case SEQ_MIN_VAL:
+      A->min_val = B->data;
+      break;
+    case SEQ_MAX_VAL:
+      A->max_val = B->data;
+      break;
+    case SEQ_INC:
+      A->increment = B->data;
+      break;
+    case SEQ_CYCLE:
+      A->cycle = B->data;
+      break;
+    case SEQ_START_VAL:
+      A->start_val = B->data;
+      break;
+    case SEQ_CHUNK_SIZE:
+      A->chunk_size = B->data;
+      break;
+  }
+}
+create_sequence_args(A) ::= . { A->last = 1; }
+
+%type create_sequence_arg {seq_arg}
+create_sequence_arg(A) ::= create_sequence_start_with(A).
+create_sequence_arg(A) ::= create_sequence_increment_by(A).
+create_sequence_arg(A) ::= create_sequence_min_value(A).
+create_sequence_arg(A) ::= create_sequence_max_value(A).
+create_sequence_arg(A) ::= create_sequence_cycle(A).
+create_sequence_arg(A) ::= create_sequence_chunk(A).
+
+%type create_sequence_start_with {seq_arg}
+create_sequence_start_with(A) ::= START WITH (B). {
+  A->type = SEQ_START_VAL;
+  A->data = B;
+}
+
+
+%type create_sequence_increment_by {seq_arg}
+create_sequence_increment_by(A) ::= INCREMENT BY (B). {
+  A->type = SEQ_INC;
+  A->data = B;
+}
+
+%type create_sequence_min_value {seq_arg}
+create_sequence_min_value(A) ::= MINVALUE (B). {
+  A->type = SEQ_MIN_VAL;
+  A->data = B;
+}
+create_sequence_min_value(A) ::= NO MINVALUE. {
+  A->type = -1;
+}
+
+%type create_sequence_max_value {seq_arg}
+create_sequence_max_value(A) ::= MAXVALUE (B). {
+  A->type = SEQ_MAX_VAL;
+  A->data = B;
+}
+create_sequence_max_value(A) ::= NO MAXVALUE. {
+  A->type = -1;
+}
+
+%type create_sequence_cycle {seq_arg}
+create_sequence_cycle(A) ::= CYCLE. {
+  A->type = SEQ_CYCLE;
+  A->data = 1;
+}
+create_sequence_cycle(A) ::= NO CYCLE. {
+  A->type = SEQ_CYCLE;
+  A->data = 0;
+}
+
+%type create_sequence_chunk {seq_arg}
+create_sequence_chunk(A) ::= CHUNK(B). {
+  A->type = SEQ_CHUNK_SIZE ;
+  A->data = B;
+}
 
 // create_table_args ::= LP columnlist conslist_opt(X) RP(E) table_options(F). {
 //   sqlite3EndTable(pParse,&X,&E,F,0);
