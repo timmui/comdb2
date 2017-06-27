@@ -1589,6 +1589,54 @@ void set_sbuftimeout(int timeout)
     bdb_attr_set(thedb->bdb_attr, BDB_ATTR_SBUFTIMEOUT, timeout);
 }
 
+
+/**
+ * Creates a sequence_t object from parameters passed to this function
+ *
+ * @param name char*
+ * @param min_val long long
+ * @param max_val long long
+ * @param increment long long
+ * @param cycle bool
+ * @param start_val long long
+ * @param chunk_size long long
+ * @param flags char
+ * @param remaining_vals long long
+ * @param next_start_val long long
+ */
+sequence_t *new_sequence(char *name, long long min_val, long long max_val,
+                         long long increment, bool cycle, long long start_val,
+                         long long chunk_size, char flags,
+                         long long remaining_vals, long long next_start_val)
+{
+    sequence_t *new_seq = malloc(sizeof(sequence_t));
+    if (new_seq == NULL) {
+        logmsg(LOGMSG_ERROR, "can't allocate memory for new sequence\n");
+        return NULL;
+    }
+
+    strcpy(new_seq->name, name);
+    new_seq->min_val = min_val;
+    new_seq->max_val = max_val;
+    new_seq->increment = increment;
+    new_seq->cycle = cycle;
+    new_seq->prev_val = start_val;
+    new_seq->next_val = start_val;
+    new_seq->chunk_size = chunk_size;
+    new_seq->flags = flags;
+    new_seq->remaining_vals = remaining_vals;
+    new_seq->next_start_val = next_start_val;
+
+    int rc = pthread_mutex_init(&new_seq->seq_lk, NULL);
+
+    if (rc) {
+        logmsg(LOGMSG_ERROR, "Failed to initialize lock for sequence\n");
+        return NULL;
+    }
+
+    return new_seq;
+}
+
 struct db *newqdb(struct dbenv *env, const char *name, int avgsz, int pagesize,
                   int isqueuedb)
 {
@@ -5412,6 +5460,102 @@ int llmeta_set_tables(tran_type *tran, struct dbenv *dbenv)
     return 0; /* success */
 }
 
+/**
+ * Create sequence objects in memory from definitions in llmeta and removes
+ * previous in-memory definitions
+ */
+static int llmeta_load_sequences(struct dbenv *dbenv)
+{
+    char *seq_names[MAX_NUM_SEQUENCES];
+    int num_found_sequences;
+    int rc;
+    int i;
+    int bdberr;
+
+    // Clear existing sequence information in memory
+    if (dbenv->num_sequences > 0) {
+        for (i = 0; i < dbenv->num_sequences; i++) {
+            free(dbenv->sequences[i]);
+        }
+    }
+    // Init number of sequences in memory
+    dbenv->num_sequences = 0;
+
+    // Get names (and count) from llmeta
+    bdberr = bdb_llmeta_get_sequence_names(seq_names, MAX_NUM_SEQUENCES,
+                                           &num_found_sequences, &bdberr);
+    if (bdberr) {
+        logmsg(LOGMSG_ERROR, "bdb_llmeta_get_sequence_names bdberr %d\n",
+               bdberr);
+        return rc;
+    };
+
+    if (num_found_sequences == 0) {
+        logmsg(LOGMSG_DEBUG, "---------------------- No Sequences found in "
+                             "llmeta ----------------------\n");
+        return 0;
+    }
+
+    dbenv->sequences =
+        realloc(dbenv->sequences, (num_found_sequences) * sizeof(sequence_t));
+
+    if (dbenv->sequences == NULL) {
+        logmsg(LOGMSG_ERROR, "can't allocate memory for sequences list\n");
+        return -1;
+    }
+
+    for (i = 0; i < num_found_sequences; i++) {
+        sequence_t *seq;
+        char *name = seq_names[i];
+        long long min_val;
+        long long max_val;
+        long long increment;
+        bool cycle;
+        long long start_val;
+        long long remaining_vals;
+        long long chunk_size;
+        char flags;
+
+        // Get sequence configuration from llmeta
+        rc = bdb_llmeta_get_sequence(name, &min_val, &max_val, &increment,
+                                     &cycle, &start_val, &chunk_size, &flags,
+                                     &bdberr);
+        if (rc) {
+            logmsg(LOGMSG_ERROR, "can't get information for sequence \"%s\"\n",
+                   name);
+            return -1;
+        }
+
+        // Get new chunk of sequence values from llmeta
+        long long next_start_val = start_val;
+        rc = bdb_llmeta_get_sequence_chunk(
+            NULL, name, min_val, max_val, increment, cycle, chunk_size, &flags,
+            &remaining_vals, &next_start_val, &bdberr);
+
+        if (rc) {
+            logmsg(LOGMSG_ERROR,
+                   "can't retrive new chunk for sequence \"%s\"\n", name);
+            return -1;
+        }
+
+        // Create new sequence in memory
+        seq = new_sequence(name, min_val, max_val, increment, cycle, start_val,
+                           chunk_size, flags, remaining_vals, next_start_val);
+
+        if (seq == NULL) {
+            logmsg(LOGMSG_ERROR, "can't create sequence \"%s\"\n", name);
+            return -1;
+        }
+        dbenv->sequences[dbenv->num_sequences++] = seq;
+
+        logmsg(LOGMSG_DEBUG, "---------------------- Loaded Sequence '%s' "
+                             "----------------------\n",
+               name);
+    }
+
+    return 0;
+}
+
 /* prints out a file (datadir/dbname_file_vers_map) that provides a mapping of
  * all the file types and numbers to version numbers, for example,
  * for each table the file will have output
@@ -7073,6 +7217,12 @@ static int init(int argc, char **argv)
 
         if (llmeta_load_queues(thedb)) {
             logmsg(LOGMSG_FATAL, "could not load queues from the low level meta "
+                            "table\n");
+            return -1;
+        }
+
+        if (llmeta_load_sequences(thedb)) {
+            logmsg(LOGMSG_FATAL, "could not load sequences from the low level meta "
                             "table\n");
             return -1;
         }

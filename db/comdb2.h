@@ -66,6 +66,7 @@ typedef long long tranid_t;
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <bb_stdint.h>
 #include <sbuf2.h>
@@ -122,6 +123,7 @@ typedef long long tranid_t;
 
 #define MAX_NUM_TABLES 1024
 #define MAX_NUM_QUEUES 1024
+#define MAX_NUM_SEQUENCES 1024
 
 #define BBIPC_KLUDGE_LEN 8
 
@@ -634,6 +636,32 @@ typedef struct {
     char *keynm[MAXCONSTRAINTS];
 } constraint_t;
 
+/* SEQUENCE object attributes */
+typedef struct {
+    int version; /* Sequence attr struct version */
+    char name[MAXTABLELEN]; /* Identifier */
+
+    /* Basic Attributes */
+    long long min_val; /* Values dispensed must be greater than or equal to min_val */
+    long long max_val; /* Values dispensed must be less than or equal to max_val */
+    long long increment; /* Normal difference between two consecutively dispensed values */
+    bool cycle; /* If cycling values is permitted */
+
+    /* Dispensing */
+    long long prev_val; /* Previously dispensed value */
+    long long next_val; /* Next value to be dispensed */
+
+    /* Synchronization with llmeta */
+    long long chunk_size; /* Number of values to allocate from llmeta */
+    long long remaining_vals; /* Number of values allocated from llmeta */
+    long long next_start_val; /* Starting value of the next chunk */
+
+    /* Flags */
+    char flags; /* Flags for the sequence objeckt*/
+
+    pthread_mutex_t seq_lk; /* mutex for protecting the value dispensing */
+} sequence_t;
+
 struct managed_component {
     int dbnum;
     LINKC_T(struct managed_component) lnk;
@@ -920,6 +948,10 @@ struct dbenv {
     struct db **dbs;
     int num_qdbs;
     struct db **qdbs;
+
+    /* sequences */
+    int num_sequences;
+    sequence_t **sequences;
 
     /* Special SPs */
     int num_lua_sfuncs;
@@ -2366,6 +2398,10 @@ int ix_find_rnum_by_recnum(struct ireq *iq, int recnum_in, int ixnum,
                            void *fnddta, int *fndlen, int *recnum, int maxlen);
 int get_schema_version(const char *table);
 int put_schema_version(const char *table, void *tran, int version);
+
+sequence_t *new_sequence (char* name, long long min_val, long long max_val, 
+    long long increment, bool cycle, long long start_val, long long chunk_size, 
+    char flags, long long remaining_vals, long long next_start_val) ;
 
 int put_db_odh(struct db *db, tran_type *, int odh);
 int get_db_odh(struct db *db, int *odh);

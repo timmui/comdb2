@@ -22,6 +22,8 @@
 #define COMDB2_MAX_RECORD_SIZE 16384
 #define MAX_DBNAME_LENGTH 64
 
+#define SEQUENCE_EXHAUSTED 0x01 /* Flag for indicating all values dispensed for a sequence */
+
 enum COMDB_LIMITS {
     LONG_REQMS = 2000,
     MAXKEYLEN = 512 /*max key len. to clients it is 256, but tagged mode
