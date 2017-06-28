@@ -551,6 +551,30 @@ create_sequence::= createkw SEQUENCE ifnotexists(E) nm(N) create_sequence_args(A
         // comdb2CreateSequence(pParse,&Y,&Z,T,0,0,E);
 }
 
+// Rule for long long ints
+%type longlong {long long}
+longlong(A) ::= ulonglong(A).
+longlong(A) ::= MINUS INTEGER(B). {
+  // Null terminate string
+  char out[B.n + 2];
+  memcpy(out+1, B.z, B.n+1);
+  out[B.n+1] = '\0';
+  out[0] = '-';
+
+  A = strtoll(out, NULL, 10);
+}
+
+// Rule for non-negative long long
+%type ulonglong {long long}
+ulonglong(A) ::= INTEGER(B). {
+  // Null terminate string
+  char out[B.n + 1];
+  memcpy(out, B.z, B.n);
+  out[B.n] = '\0';
+
+  A = strtoll(out, NULL, 10);
+}
+
 %type create_sequence_args {seq_args}
 create_sequence_args(A) ::= create_sequence_arg(B) create_sequence_args(C). {
   // Copy previous set of options
@@ -614,54 +638,30 @@ create_sequence_arg(A) ::= create_sequence_cycle(A).
 create_sequence_arg(A) ::= create_sequence_chunk(A).
 
 %type create_sequence_start_with {seq_arg}
-create_sequence_start_with(A) ::= START WITH INTEGER(B). {
+create_sequence_start_with(A) ::= START WITH longlong(B). {
   A.type = SEQ_START_VAL;
-
-  // Null terminate string
-  char out[B.n + 1];
-  memcpy(out, B.z, B.n);
-  out[B.n] = '\0';
-
-  A.data = strtoll(out, NULL, 10);
+  A.data = B;
 }
 
 %type create_sequence_increment_by {seq_arg}
-create_sequence_increment_by(A) ::= INCREMENT BY INTEGER(B). {
+create_sequence_increment_by(A) ::= INCREMENT BY longlong(B). {
   A.type = SEQ_INC;
-
-  // Null terminate string
-  char out[B.n + 1];
-  memcpy(out, B.z, B.n);
-  out[B.n] = '\0';
-
-  A.data = strtoll(out, NULL, 10);
+  A.data = B;
 }
 
 %type create_sequence_min_value {seq_arg}
-create_sequence_min_value(A) ::= MINVALUE INTEGER(B). {
+create_sequence_min_value(A) ::= MINVALUE longlong(B). {
   A.type = SEQ_MIN_VAL;
-
-  // Null terminate string
-  char out[B.n + 1];
-  memcpy(out, B.z, B.n);
-  out[B.n] = '\0';
-
-  A.data = strtoll(out, NULL, 10);
+  A.data = B;
 }
 create_sequence_min_value(A) ::= NO MINVALUE. {
   A.type = -1;
 }
 
 %type create_sequence_max_value {seq_arg}
-create_sequence_max_value(A) ::= MAXVALUE INTEGER(B). {
+create_sequence_max_value(A) ::= MAXVALUE longlong(B). {
   A.type = SEQ_MAX_VAL;
-
-  // Null terminate string
-  char out[B.n + 1];
-  memcpy(out, B.z, B.n);
-  out[B.n] = '\0';
-
-  A.data = strtoll(out, NULL, 10);
+  A.data = B;
 }
 create_sequence_max_value(A) ::= NO MAXVALUE. {
   A.type = -1;
@@ -678,15 +678,9 @@ create_sequence_cycle(A) ::= NO CYCLE. {
 }
 
 %type create_sequence_chunk {seq_arg}
-create_sequence_chunk(A) ::= CHUNK INTEGER(B). {
+create_sequence_chunk(A) ::= CHUNK ulonglong(B). {
   A.type = SEQ_CHUNK_SIZE ;
-  
-  // Null terminate string
-  char out[B.n + 1];
-  memcpy(out, B.z, B.n);
-  out[B.n] = '\0';
-
-  A.data = strtoll(out, NULL, 10);
+  A.data = B;
 }
 create_sequence_chunk(A) ::= NO CHUNK. {
   A.type = -1;
@@ -736,12 +730,12 @@ create_sequence_chunk(A) ::= NO CHUNK. {
 %endif SQLITE_OMIT_COMPOUND_SELECT
   REINDEX RENAME CTIME_KW IF
 // COMDB2 KEYWORDS
-  AGGREGATE ALIAS AUTHENTICATION BLOBFIELD BULKIMPORT COMMITSLEEP CONSUMER
-  CONVERTSLEEP COVERAGE NONE CRLE DATA DATABLOB DISABLE ENABLE FOR FUNCTION GET GRANT IPU
-  ISC KW LUA LZ4 ODH OFF OP OPTIONS PARTITION PASSWORD PERIOD
-  PROCEDURE PUT REBUILD READ REC RESERVED RETENTION REVOKE RLE ROWLOCKS
-  SCALAR SCHEMACHANGE SEQUENCE START SUMMARIZE THREADS THRESHOLD TIME
-  TRUNCATE VERSION WRITE DDL USERSCHEMA ZLIB .
+  AGGREGATE ALIAS AUTHENTICATION BLOBFIELD BULKIMPORT CHUNK COMMITSLEEP CONSUMER
+  CONVERTSLEEP COVERAGE CRLE CYCLE DATA DATABLOB DDL DISABLE ENABLE FOR FUNCTION
+  GET GRANT INCREMENT IPU ISC KW LUA LZ4 MAXVALUE MINVALUE NONE ODH OFF OP OPTIONS
+  PARTITION PASSWORD PERIOD PROCEDURE PUT READ REBUILD REC RESERVED RETENTION
+  REVOKE RLE ROWLOCKS SCALAR SCHEMACHANGE SEQUENCE START SUMMARIZE THREADS THRESHOLD
+  TIME TRUNCATE USERSCHEMA VERSION WRITE ZLIB .
 %wildcard ANY.
 
 
