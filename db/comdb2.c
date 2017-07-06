@@ -910,6 +910,16 @@ struct db *getqueuebyname(const char *name)
     return NULL;
 }
 
+sequence_t *getsequencebyname(const char *name)
+{
+    int i;
+    /*should be changed to a hash table*/
+    for (i = 0; i < thedb->num_sequences; i++)
+        if (thedb->sequences[i] && strcasecmp(thedb->sequences[i]->name, name) == 0)
+            return thedb->sequences[i];
+    return NULL;
+}
+
 int get_max_reclen(struct dbenv *dbenv)
 {
     int max = 0;

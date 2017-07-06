@@ -543,7 +543,8 @@ enum {
     DBTYPE_TAGGED_TABLE = 1,
     DBTYPE_QUEUE = 2,
     DBTYPE_MORESTRIPE = 3, /* fake type used in schema change code */
-    DBTYPE_QUEUEDB = 4
+    DBTYPE_QUEUEDB = 4,
+    DBTYPE_SEQUENCE = 5
 };
 
 /* Copied verbatim from bdb_api.h since we don't expose that file to most
@@ -1975,6 +1976,7 @@ struct db *getfdbbynameenv(
     const char *name); /* look up foreign db by name with given env */
 struct db *
 getqueuebyname(const char *name); /*look up managed queue db's by name*/
+sequence_t *getsequencebyname(const char *name);
 struct db *getfdbbyrmtnameenv(struct dbenv *dbenv, const char *tblname);
 
 int get_elect_time_microsecs(void); /* get election time in seconds */
