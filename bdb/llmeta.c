@@ -7944,7 +7944,8 @@ struct seq_data {
     bool cycle;          /* If cycling values is permitted */
 
     /* Synchronization with llmeta */
-    long long start_val; /* Next value to be dispensed from llmeta into memory */
+    long long start_val; /* Start value of the sequence changed by a START WITH */
+    long long next_start_val; /* Next value to be dispensed from llmeta into memory */
     long long chunk_size; /* Number of values to allocate from llmeta */
 
     /* Flags */
@@ -7986,6 +7987,7 @@ static uint8_t *llmeta_sequence_data_put(struct seq_data *data, char *p_buf,
     p_buf = buf_put(&data->increment, sizeof(long long), p_buf, p_buf_end);
     p_buf = buf_put(&data->cycle, sizeof(bool), p_buf, p_buf_end);
     p_buf = buf_put(&data->start_val, sizeof(long long), p_buf, p_buf_end);
+    p_buf = buf_put(&data->next_start_val, sizeof(long long), p_buf, p_buf_end);
     p_buf = buf_put(&data->chunk_size, sizeof(long long), p_buf, p_buf_end);
     p_buf = buf_put(&data->flags, sizeof(char), p_buf, p_buf_end);
 
@@ -8010,6 +8012,8 @@ static struct seq_data *llmeta_sequence_data_get(char *p_buf, char *p_buf_end)
     p_buf = (uint8_t *)buf_get(&data->cycle, sizeof(bool), p_buf, p_buf_end);
     p_buf = (uint8_t *)buf_get(&data->start_val, sizeof(long long), p_buf,
                                p_buf_end);
+    p_buf = (uint8_t *)buf_get(&data->next_start_val, sizeof(long long), p_buf,
+                               p_buf_end);
     p_buf = (uint8_t *)buf_get(&data->chunk_size, sizeof(long long), p_buf,
                                p_buf_end);
     p_buf = (uint8_t *)buf_get(&data->flags, sizeof(char), p_buf, p_buf_end);
@@ -8025,8 +8029,8 @@ bad_alloc:
 
 int bdb_llmeta_add_sequence(tran_type *tran, char *name, long long min_val,
                             long long max_val, long long increment, bool cycle,
-                            long long start_val, long long chunk_size,
-                            char flags, int *bdberr)
+                            long long start_val, long long next_start_val,
+                            long long chunk_size, char flags, int *bdberr)
 {
     char key[LLMETA_IXLEN] = {0};
     int dtalen;
@@ -8058,6 +8062,7 @@ int bdb_llmeta_add_sequence(tran_type *tran, char *name, long long min_val,
     sd.chunk_size = chunk_size;
     sd.flags = flags;
     sd.start_val = start_val;
+    sd.next_start_val = next_start_val;
 
     dtalen = sizeof(struct seq_data);
 
@@ -8085,7 +8090,7 @@ int bdb_llmeta_add_sequence(tran_type *tran, char *name, long long min_val,
 
 int bdb_llmeta_alter_sequence(tran_type *tran, char *name, long long min_val,
                               long long max_val, long long increment,
-                              bool cycle, long long start_val,
+                              bool cycle, long long start_val, long long next_start_val,
                               long long chunk_size, char flags, int *bdberr)
 {
     int rc;
@@ -8094,7 +8099,7 @@ int bdb_llmeta_alter_sequence(tran_type *tran, char *name, long long min_val,
     rc = bdb_llmeta_drop_sequence(tran, name, bdberr);
     if (rc) goto done;
     rc = bdb_llmeta_add_sequence(tran, name, min_val, max_val, increment, cycle,
-                                 start_val, chunk_size, flags, bdberr);
+                                 start_val, next_start_val, chunk_size, flags, bdberr);
     if (rc) goto done;
 
 done:
@@ -8144,7 +8149,8 @@ done:
  * @param long long chunk_size Size of the chunk of values to preallocate from llmeta
  * @param char *flags Pointer to flags for the sequence
  * @param long long *remaining_vals Pointer to next_val member in sequence_t object
- * @param long long *next_start_val
+ * @param long long start_val Start value of the sequence
+ * @param long long *next_start_val Start value of the next dispensed chunk
  * @param int *bdberr BDB error
  */
 int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
@@ -8152,6 +8158,7 @@ int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
                                   long long increment, bool cycle,
                                   long long chunk_size, char *flags,
                                   long long *remaining_vals,
+                                  long long start_val,
                                   long long *next_start_val, int *bdberr)
 {
     long long new_start_val;
@@ -8165,15 +8172,15 @@ int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
 
     // Check sequence rules
     unsigned long long max_uniq_values;
-    // Checks for abs - min int value is undef behaviour
+    // Checks for llabs - min int value is undef behaviour
     if (min_val == LLONG_MIN) {
         max_uniq_values =
-            (abs(max_val) + (LLONG_MAX - 1)) /
-            abs(increment); /* Maximum unique values in sequence 8 */
+            (llabs(max_val) + (LLONG_MAX - 1)) /
+            llabs(increment); /* Maximum unique values in sequence 8 */
     } else {
         max_uniq_values =
-            abs(max_val - min_val) /
-            abs(increment); /* Maximum unique values in sequence 8 */
+            llabs(max_val - min_val) /
+            llabs(increment); /* Maximum unique values in sequence 8 */
     }
 
     unsigned long long
@@ -8183,13 +8190,13 @@ int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
     if (increment > 0) {
         // Increasing sequence
 
-        // Check for abs - min int value is undef behaviour
+        // Check for llabs - min int value is undef behaviour
         if (*next_start_val == LLONG_MIN) {
             values_before_cycle =
-                abs(max_val + (LLONG_MAX - 1)) / abs(increment);
+                llabs(max_val + (LLONG_MAX - 1)) / llabs(increment);
         } else {
             values_before_cycle =
-                abs(max_val - *next_start_val) / abs(increment);
+                llabs(max_val - *next_start_val) / llabs(increment);
         }
 
         if (values_before_cycle < chunk_size) {
@@ -8230,12 +8237,12 @@ int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
     } else {
         // Decreasing sequence
 
-        // Check for abs - min int value is undef behaviour
+        // Check for llabs - min int value is undef behaviour
         if (*next_start_val == LLONG_MIN) {
             // min_val must be LLONG_MIN also in this case
             values_before_cycle = 0;
         } else {
-            values_before_cycle = abs((*next_start_val - min_val) / increment);
+            values_before_cycle = llabs((*next_start_val - min_val) / increment);
         }
 
         if (values_before_cycle < chunk_size) {
@@ -8276,8 +8283,8 @@ int bdb_llmeta_get_sequence_chunk(tran_type *tran, char *name,
     }
 
     // Write new start value to llmeta
-    bdb_llmeta_alter_sequence(NULL, name, min_val, max_val, increment, cycle,
-                              new_start_val, chunk_size, *flags, bdberr);
+    rc = bdb_llmeta_alter_sequence(NULL, name, min_val, max_val, increment, cycle,
+                              start_val, new_start_val, chunk_size, *flags, bdberr);
 
     // Return start value of the next chunk
     *next_start_val = new_start_val;
@@ -8327,8 +8334,8 @@ int bdb_llmeta_get_sequence_names(char **sequence_names, size_t max_seqs,
 
 int bdb_llmeta_get_sequence(char *name, long long *min_val, long long *max_val,
                             long long *increment, bool *cycle,
-                            long long *start_val, long long *chunk_size,
-                            char *flags, int *bdberr)
+                            long long *start_val, long long *next_start_val,
+                            long long *chunk_size, char *flags, int *bdberr)
 {
     struct seq_key sk = {0};
     struct seq_data *sd = NULL;
@@ -8377,6 +8384,7 @@ int bdb_llmeta_get_sequence(char *name, long long *min_val, long long *max_val,
     *flags = sd->flags;
     *chunk_size = sd->chunk_size;
     *start_val = sd->start_val;
+    *next_start_val = sd->next_start_val;
 
     free(sd);
     sd = NULL;
