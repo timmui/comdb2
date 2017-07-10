@@ -49,9 +49,14 @@ int seq_next_val(char *name, long long *val)
     // TODO: is this a good way to lock?
     pthread_mutex_lock(&seq->seq_lk);
 
+    if (seq->flags & SEQUENCE_EXHAUSTED) {
+        // Check again in lock
+        logmsg(LOGMSG_ERROR, "End of sequence. No more values to dispense.");
+        return -1;
+    }
+
     // Dispense next_val
     *val = seq->next_val;
-    seq->remaining_vals--;
 
     // Increment Value for next request
     long long next_val = seq->next_val;
@@ -73,14 +78,16 @@ int seq_next_val(char *name, long long *val)
         return 0;
     }
 
+    // Decrement remaining values if no overflow occurs
+    seq->remaining_vals--;
+
+    // Apply increment
     seq->next_val += seq->increment;
 
     // Check for cycle conditions
     if ((seq->increment > 0) && (seq->next_val > seq->max_val)) {
         if (seq->cycle) {
             seq->next_val = seq->min_val;
-        } else if (seq->cycle && seq->increment < 0) {
-            seq->next_val = seq->max_val;
         } else {
             // No more sequence values to dispense. Value of next_val is now
             // undefined behaviour (unreliable)
