@@ -8100,7 +8100,6 @@ int bdb_llmeta_alter_sequence(tran_type *tran, char *name, long long min_val,
     if (rc) goto done;
     rc = bdb_llmeta_add_sequence(tran, name, min_val, max_val, increment, cycle,
                                  start_val, next_start_val, chunk_size, flags, bdberr);
-    if (rc) goto done;
 
 done:
     return rc;
@@ -8130,8 +8129,6 @@ int bdb_llmeta_drop_sequence(tran_type *tran, char *name, int *bdberr)
     }
 
     rc = bdb_lite_exact_del(llmeta_bdb_state, tran, key, bdberr);
-
-    if (rc) goto done;
 
 done:
     return rc;
