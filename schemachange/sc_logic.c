@@ -456,53 +456,36 @@ int do_alter_stripes(struct schema_change_type *s)
 // TODO: Modify for sequences
 int do_add_sequence(struct schema_change_type *s, tran_type *trans)
 {
-    struct db *db;
-    int rc, bdberr;
-
-    // set_original_tablename(s);
-
-    if (!s->resume) set_sc_flgs(s);
-
-    rc = propose_sc(s);
-
-    if (rc == SC_OK) {
-        rc = do_add_sequence_int(s->table, s->seq_min_val, s->seq_max_val,
+    wrlock_schema_lk();
+    int rc = do_add_sequence_int(s->table, s->seq_min_val, s->seq_max_val,
                                  s->seq_increment, s->seq_cycle,
                                  s->seq_start_val, s->seq_chunk_size, trans);
+    if (rc) {
+        return rc;
     }
-    // if (master_downgrading(s)) return SC_MASTER_DOWNGRADE;
-
-    broadcast_sc_end(sc_seed);
-
-    // if ((s->type != DBTYPE_TAGGED_TABLE) && gbl_pushlogs_after_sc)
-    //     push_next_log();
-
-    return rc;
+    
+    int bdberr;
+    bdb_llog_scdone(db->handle, llmeta_sequence_add, 1, &bdberr);
+    
+    unlock_schema_lk();
+    return 0;
 }
 
 // TODO: Modify for sequences
 int do_drop_sequence(struct schema_change_type *s, tran_type *trans)
 {
-    struct db *db;
-    int rc, bdberr;
+    wrlock_schema_lk();
+    int rc = do_drop_sequence_int(s->table, trans);
 
-    // set_original_tablename(s);
-
-    if (!s->resume) set_sc_flgs(s);
-
-    rc = propose_sc(s);
-
-    if (rc == SC_OK) {
-        rc = do_drop_sequence_int(s->table, trans);
+    if (rc) {
+        return rc;
     }
-    // if (master_downgrading(s)) return SC_MASTER_DOWNGRADE;
-
-    broadcast_sc_end(sc_seed);
-
-    // if ((s->type != DBTYPE_TAGGED_TABLE) && gbl_pushlogs_after_sc)
-    //     push_next_log();
-
-    return rc;
+    
+    int bdberr;
+    bdb_llog_scdone(db->handle, llmeta_sequence_add, 1, &bdberr);
+    
+    unlock_schema_lk();
+    return 0;
 }
 
 // TODO: Modify for sequences
