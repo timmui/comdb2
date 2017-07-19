@@ -62,18 +62,18 @@ int do_add_sequence_int(char *name, long long min_val, long long max_val,
     }
 
     // Allocate value chunk
-    long long next_start_val = start_val;
-    long long remaining_vals;
+    // long long next_start_val = start_val;
+    // long long remaining_vals;
 
-    rc = bdb_llmeta_get_sequence_chunk(
-        trans, name, min_val, max_val, increment, cycle, chunk_size, &flags,
-        &remaining_vals, start_val, &next_start_val, &bdberr);
+    // rc = bdb_llmeta_get_sequence_chunk(
+    //     trans, name, min_val, max_val, increment, cycle, chunk_size, &flags,
+    //     &remaining_vals, start_val, &next_start_val, &bdberr);
 
-    if (rc) {
-        logmsg(LOGMSG_ERROR, "can't retrive new chunk for sequence \"%s\"\n",
-               name);
-        return -1;
-    }
+    // if (rc) {
+    //     logmsg(LOGMSG_ERROR, "can't retrive new chunk for sequence \"%s\"\n",
+    //            name);
+    //     return -1;
+    // }
 
     // Make space in memory
     thedb->sequences = realloc(thedb->sequences,
@@ -85,7 +85,7 @@ int do_add_sequence_int(char *name, long long min_val, long long max_val,
 
     // Create new sequence in memory
     sequence_t *seq = new_sequence(name, min_val, max_val, start_val, increment, cycle, start_val,
-                       chunk_size, flags, remaining_vals, next_start_val);
+                       chunk_size, flags, 0, start_val);
 
     if (seq == NULL) {
         logmsg(LOGMSG_ERROR, "can't create sequence \"%s\"\n", name);
