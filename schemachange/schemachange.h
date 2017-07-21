@@ -124,16 +124,19 @@ struct schema_change_type {
     int finalize;      /* Whether the schema change should be committed */
     int finalize_only; /* only commit the schema change */
 
-    int addseq; /* Flag for adding a sequence */
-    int dropseq; /* Flag for deleting a sequence */
+    int addseq;   /* Flag for adding a sequence */
+    int dropseq;  /* Flag for deleting a sequence */
     int alterseq; /* Flag for altering a sequence */
 
-    long long seq_min_val;
-    long long seq_max_val;
-    long long seq_increment;
-    int seq_cycle;
-    long long seq_start_val;
-    long long seq_chunk_size;
+    long long seq_min_val;   /* Minimum value for a sequence */
+    long long seq_max_val;   /* Maximum value for a sequence */
+    long long seq_increment; /* Value to increment by */
+    int seq_cycle; /* Flag for if the sequence should restart when exhausted */
+    long long seq_start_val; /* Start value for the sequence */
+    long long
+        seq_chunk_size; /* Size of block of values to allocate per sequence */
+    long long seq_restart_val; /* Restart value for a sequence */
+    int seq_modified; /* Sequence options modified in this schema change*/
 
     pthread_mutex_t mtx; /* mutex for thread sync */
     int sc_rc;

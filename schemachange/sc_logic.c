@@ -532,7 +532,6 @@ int do_schema_change_tran(sc_arg_t *arg)
         rc = do_alter_queues(s);
     else if (s->type == DBTYPE_MORESTRIPE)
         rc = do_alter_stripes(s);
-    // TODO: Add sequences stuff
     else if (s->type == DBTYPE_SEQUENCE && s->addseq)
         rc = do_add_sequence(s, trans);
     else if (s->type == DBTYPE_SEQUENCE && s->alterseq)

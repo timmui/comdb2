@@ -551,6 +551,8 @@ sequence_args(A) ::= sequence_arg(B) sequence_args(C). {
 
   if (B.type < 0){
     return;
+  } else if (A.modified & B.type) {
+    return sqlite3ErrorMsg(pParse, "conflicting or redundant options");
   }
 
   switch(B.type) {
@@ -683,14 +685,13 @@ cmd ::= DROP SEQUENCE nm(N). {
 
 ///////////////////// COMDB2 ALTER SEQUENCE statement ////////////////////////////
 
-cmd ::= dryrun(D) ALTER SEQUENCE nm(N) alter_sequence_args(A). {
+cmd ::= ALTER SEQUENCE nm(N) alter_sequence_args(A). {
   // Null terminate string
   char name[N.n + 1];
   memcpy(name, N.z, N.n);
   name[N.n] = '\0';
 
-  // TODO: Figure out everything with restart value
-  // comdb2AlterSequence(pParse,name,A.min_val,A.max_val,A.increment,A.cycle,A.start_val,A.chunk_size,A.modified,D);
+  comdb2AlterSequence(pParse,name,A.min_val,A.max_val,A.increment,A.cycle,A.start_val,A.chunk_size,A.restart_val,A.modified);
 }
 
 %type sequence_restart_with {seq_arg}
@@ -703,6 +704,7 @@ sequence_restart_with(A) ::= RESTART longlong(B). {
   A.data = B;
 }
 sequence_restart_with(A) ::= RESTART. {
+  // Will be marked in A.modified
   A.type = SEQ_RESTART_TO_START_VAL;
 }
 
@@ -719,6 +721,8 @@ alter_sequence_args(A) ::= alter_sequence_arg(B) alter_sequence_args(C). {
 
   if (B.type < 0){
     return;
+  } else if (A.modified & B.type) {
+    return sqlite3ErrorMsg(pParse, "conflicting or redundant options");
   }
 
   switch(B.type) {
@@ -741,6 +745,9 @@ alter_sequence_args(A) ::= alter_sequence_arg(B) alter_sequence_args(C). {
       A.chunk_size = B.data;
       break;
     case SEQ_RESTART_VAL:
+      if (A.modified & SEQ_RESTART_TO_START_VAL) {
+        return sqlite3ErrorMsg(pParse, "conflicting or redundant options");
+      }
       A.restart_val = B.data;
   }
 
