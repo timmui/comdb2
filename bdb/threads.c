@@ -284,9 +284,22 @@ void *coherency_lease_thread(void *arg)
 
     while (lease_time = bdb_state->attr->coherency_lease) {
         inc_wait = 0;
+        uint32_t current_gen, durable_gen;
+        DB_LSN durable_lsn;
 
-        if (repinfo->master_host == repinfo->myhost)
+        if (repinfo->master_host == repinfo->myhost) {
             send_coherency_leases(bdb_state, lease_time, &inc_wait);
+
+            /* See if master has written a durable LSN */
+            bdb_state->dbenv->get_rep_gen(bdb_state->dbenv, &current_gen);
+            bdb_state->dbenv->get_durable_lsn(bdb_state->dbenv, &durable_lsn,
+                                              &durable_gen);
+
+            /* Insert a record if it hasn't */
+            if (durable_gen != current_gen) {
+                inc_wait = 1;
+            }
+        }
 
         now = time(NULL);
         if (inc_wait && (add_interval = bdb_state->attr->add_record_interval)) {
@@ -315,43 +328,43 @@ void *coherency_lease_thread(void *arg)
     return NULL;
 }
 
-void *logdelete_thread(void *arg) {
-  bdb_state_type *bdb_state;
+void *logdelete_thread(void *arg)
+{
+    bdb_state_type *bdb_state;
 
-  bdb_state = (bdb_state_type *)arg;
+    bdb_state = (bdb_state_type *)arg;
 
-  if (bdb_state->parent)
-    bdb_state = bdb_state->parent;
+    if (bdb_state->parent) bdb_state = bdb_state->parent;
 
-  while (!bdb_state->after_llmeta_init_done)
-    sleep(1);
+    while (!bdb_state->after_llmeta_init_done)
+        sleep(1);
 
-  populate_deleted_files(bdb_state);
+    populate_deleted_files(bdb_state);
 
-  thread_started("bdb logdelete");
+    thread_started("bdb logdelete");
 
-  bdb_thread_event(bdb_state, 1);
+    bdb_thread_event(bdb_state, 1);
 
-  while (1) {
-    int sleeptime;
-    BDB_READLOCK("logdelete_thread");
+    while (1) {
+        int sleeptime;
+        BDB_READLOCK("logdelete_thread");
 
-    if (bdb_state->exiting) {
-      logmsg(LOGMSG_DEBUG, "logdelete_thread: exiting\n");
+        if (bdb_state->exiting) {
+            logmsg(LOGMSG_DEBUG, "logdelete_thread: exiting\n");
 
-      BDB_RELLOCK();
-      bdb_thread_event(bdb_state, 0);
-      pthread_exit(NULL);
+            BDB_RELLOCK();
+            bdb_thread_event(bdb_state, 0);
+            pthread_exit(NULL);
+        }
+
+        delete_log_files(bdb_state);
+
+        BDB_RELLOCK();
+        sleeptime = bdb_state->attr->logdelete_run_interval;
+        sleeptime = (sleeptime <= 0 ? 30 : sleeptime);
+
+        sleep(sleeptime);
     }
-
-    delete_log_files(bdb_state);
-
-    BDB_RELLOCK();
-    sleeptime = bdb_state->attr->logdelete_run_interval;
-    sleeptime = (sleeptime <= 0 ? 30 : sleeptime);
-
-    sleep(sleeptime);
-  }
 }
 
 extern int gbl_rowlocks;

@@ -38,7 +38,6 @@
 #include <assert.h>
 /*#include "protobuf/sqlresponse.pb-c.h"*/
 
-
 #define SIZEOF_SEQNUM (10 * sizeof(int))
 struct seqnum_t;
 typedef struct seqnum_t seqnum_type;
@@ -234,9 +233,12 @@ enum {
 
 /* See attr.h for attribute definitions */
 enum {
-#define DEF_ATTR(NAME, name, type, dflt) BDB_ATTR_##NAME,
+#define DEF_ATTR(NAME, name, type, dflt, desc) BDB_ATTR_##NAME,
+#define DEF_ATTR_2(NAME, name, type, dflt, desc, flags, verify_fn, update_fn)  \
+    BDB_ATTR_##NAME,
 #include "attr.h"
 #undef DEF_ATTR
+#undef DEF_ATTR_2
     BDB_ATTR_MAX
 };
 
@@ -537,10 +539,6 @@ int bdb_handle_dbp_hash_stat(bdb_state_type *bdb_state);
 int bdb_handle_dbp_hash_stat_reset(bdb_state_type *bdb_state);
 int bdb_close_temp_state(bdb_state_type *bdb_state, int *bdberr);
 
-void *bdb_allocate_locks(int nTables);
-int bdb_lock_table(bdb_state_type *bdb_state, int lid, void *locks, int index);
-int bdb_unlock_table(bdb_state_type *bdb_state, void *locks, int index);
-
 /* get file sizes for indexes and data files */
 uint64_t bdb_index_size(bdb_state_type *bdb_state, int ixnum);
 uint64_t bdb_data_size(bdb_state_type *bdb_state, int dtanum);
@@ -636,12 +634,9 @@ void bdb_get_tran_lockerid(tran_type *tran, uint32_t *lockerid);
 void *bdb_get_physical_tran(tran_type *ltran);
 void bdb_ltran_get_schema_lock(tran_type *ltran);
 
-tran_type *bdb_tran_begin_socksql(bdb_state_type *bdb_state,
-                                  int has_qyery_isolation, int trak,
-                                  int *bdberr);
+tran_type *bdb_tran_begin_socksql(bdb_state_type *, int trak, int *bdberr);
 
-tran_type *bdb_tran_begin_readcommitted(bdb_state_type *bdb_state,
-                                        int has_qyery_isolation, int trak,
+tran_type *bdb_tran_begin_readcommitted(bdb_state_type *, int trak,
                                         int *bdberr);
 
 tran_type *bdb_tran_begin_serializable(bdb_state_type *bdb_state, int trak,
@@ -650,8 +645,6 @@ tran_type *bdb_tran_begin_serializable(bdb_state_type *bdb_state, int trak,
 tran_type *bdb_tran_begin_snapisol(bdb_state_type *bdb_state, int trak,
                                    int *bdberr, int epoch, int file,
                                    int offset);
-tran_type *bdb_tran_begin_queryisolation(bdb_state_type *bdb_state, int trak,
-                                         int *bdberr);
 
 /* commit the transaction referenced by the tran handle */
 int bdb_tran_commit(bdb_state_type *bdb_handle, tran_type *tran, int *bdberr);
@@ -1527,10 +1520,6 @@ int bdb_summarize_table(bdb_state_type *bdb_state, int ixnum, int comp_pct,
 void bdb_bdblock_debug(void);
 int bdb_env_init_after_llmeta(bdb_state_type *bdb_state);
 
-int bdb_tran_commit_queryisolation(bdb_state_type *bdb_state, tran_type *tran,
-                                   int *bdberr);
-int bdb_tran_abort_queryisolation(bdb_state_type *bdb_state, tran_type *tran,
-                                  int *bdberr);
 int bdb_rowlocks_check_commit_physical(bdb_state_type *bdb_state,
                                        tran_type *tran, int blockop_count);
 int bdb_is_rowlocks_transaction(tran_type *tran);
