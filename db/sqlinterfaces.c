@@ -926,6 +926,13 @@ int newsql_write_response(struct sqlclntstate *clnt, int type,
     return 0;
 }
 
+int request_sequence_num_from_master(bdb_state_type *bdb_state, const char *name_in, long long *val);
+
+int request_sequence_num(const char *name, long long *val)
+{
+    return request_sequence_num_from_master(thedb->bdb_env, name, val);
+}
+
 int request_durable_lsn_from_master(bdb_state_type *bdb_state, uint32_t *file,
                                     uint32_t *offset, uint32_t *durable_gen);
 
