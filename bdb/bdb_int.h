@@ -1057,7 +1057,8 @@ enum {
     USER_TYPE_DEL_NAME,
     USER_TYPE_TRANSFERMASTER_NAME,
     USER_TYPE_DURABLE_LSN,
-    USER_TYPE_REQ_START_LSN
+    USER_TYPE_REQ_START_LSN,
+    USER_TYPE_REQ_SEQUENCE_NUM
 };
 
 void print(bdb_state_type *bdb_state, char *format, ...);
@@ -1796,6 +1797,9 @@ void receive_coherency_lease(void *ack_handle, void *usr_ptr, char *from_host,
 void receive_start_lsn_request(void *ack_handle, void *usr_ptr, char *from_host,
                              int usertype, void *dta, int dtalen,
                              uint8_t is_tcp);
+void receive_sequence_num_request(void *ack_handle, void *usr_ptr,
+                                  char *from_host, int usertype, void *dta,
+                                  int dtalen, uint8_t is_tcp);
 void receive_durable_lsn(void *ack_handle, void *usr_ptr, char *from_host,
                          int usertype, void *dta, int dtalen, uint8_t is_tcp);
 

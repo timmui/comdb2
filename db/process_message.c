@@ -55,6 +55,7 @@ extern int __berkdb_fsync_alarm_ms;
 #include "memdebug.h"
 #include "verify.h"
 #include "switches.h"
+#include "sequences.h"
 
 #include "osqlrepository.h"
 #include "osqlcomm.h"
@@ -1834,6 +1835,36 @@ int process_command(struct dbenv *dbenv, char *line, int lline, int st)
         tok = segtok(line, lline, &st, &ltok);
         int thread_id = toknum(tok, ltok);
         gbl_break_lua = thread_id;
+
+    } else if (tokcmp(tok, ltok, "sequence") == 0) {
+        tok = segtok(line, lline, &st, &ltok);
+
+        if (tokcmp(tok, ltok, "print") == 0) {
+            int idx;
+            for (idx = 0; idx < thedb->num_sequences; idx++) {
+                sequence_t *seq = thedb->sequences[idx];
+                logmsg(LOGMSG_USER,"------ Sequence %d ------\nName: %s\nNext Val: %lld\nStart Val: %lld\nMin Val: %lld\nMax Val: %lld\nInc: %lld\nCycle?: %s\nChunk Size: %lld\nRemaining Vals: %lld\nNext Start Val: %lld\nSequence Exhausted?: %s\n",
+                    idx+1,
+                    seq->name,
+                    seq->next_val,
+                    seq->start_val,
+                    seq->min_val,
+                    seq->max_val,
+                    seq->increment,
+                    seq->cycle ? "true": "false",
+                    seq->chunk_size,
+                    seq->remaining_vals,
+                    seq->next_start_val,
+                    seq->flags & SEQUENCE_EXHAUSTED ? "true" : "false"
+                );
+            }
+        }
+
+        else {
+            logmsg(LOGMSG_USER, "Try Again\n");
+            return -1;
+        }
+
     } else if (tokcmp(tok, ltok, "stat") == 0) {
         /* Sam J - allow us to get much more status from an op1 window by
          * forwarding commands to the bdb backend. */

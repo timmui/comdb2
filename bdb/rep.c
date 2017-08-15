@@ -3990,6 +3990,7 @@ void receive_start_lsn_request(void *ack_handle, void *usr_ptr, char *from_host,
         logmsg(LOGMSG_ERROR, "%s returning bad rcode because i am not master\n", 
                 __func__);
         net_ack_message(ack_handle, 1);
+        ack_handle = NULL;
         return;
     }
 
@@ -3998,6 +3999,7 @@ void receive_start_lsn_request(void *ack_handle, void *usr_ptr, char *from_host,
         logmsg(LOGMSG_ERROR, "%s returning bad rcode because i don't have enough "
                 "leases\n", __func__);
         net_ack_message(ack_handle, 2);
+        ack_handle = NULL;
         return;
     }
 
@@ -4011,6 +4013,7 @@ void receive_start_lsn_request(void *ack_handle, void *usr_ptr, char *from_host,
                              "durable_gen=%d\n",
                __func__, __LINE__, current_gen, start_lsn.gen);
         net_ack_message(ack_handle, 3);
+        ack_handle = NULL;
         return;
     }
 
@@ -4031,7 +4034,299 @@ void receive_start_lsn_request(void *ack_handle, void *usr_ptr, char *from_host,
     }
 
     net_ack_message_payload(ack_handle, 0, buf, START_LSN_RESPONSE_TYPE_LEN);
+    ack_handle = NULL;
     return;
+}
+
+extern int seq_next_val(tran_type *tran, char *name, long long *val);
+
+static uint8_t *sequence_num_request_put(char *name, uint8_t *p_buf,
+                                         const uint8_t *p_buf_end)
+{
+    if (p_buf_end < p_buf || MAXTABLELEN > (p_buf_end - p_buf)) return NULL;
+
+    p_buf = buf_put(name, MAXTABLELEN, p_buf, p_buf_end);
+    return p_buf;
+}
+
+static const uint8_t *sequence_num_request_get(char *name, const uint8_t *p_buf,
+                                               const uint8_t *p_buf_end)
+{
+    if (p_buf_end < p_buf || MAXTABLELEN > (p_buf_end - p_buf)) return NULL;
+
+    p_buf = buf_get(name, MAXTABLELEN, p_buf, p_buf_end);
+    return p_buf;
+}
+
+static uint8_t *sequence_num_response_put(long long *value, uint8_t *p_buf,
+                                          const uint8_t *p_buf_end)
+{
+    if (p_buf_end < p_buf || sizeof(long long) > (p_buf_end - p_buf))
+        return NULL;
+
+    p_buf = buf_put(value, sizeof(long long), p_buf, p_buf_end);
+    return p_buf;
+}
+
+static const uint8_t *sequence_num_response_get(long long *value,
+                                                const uint8_t *p_buf,
+                                                const uint8_t *p_buf_end)
+{
+    if (p_buf_end < p_buf || sizeof(long long) > (p_buf_end - p_buf))
+        return NULL;
+
+    p_buf = buf_get(value, sizeof(long long), p_buf, p_buf_end);
+    return p_buf;
+}
+
+// Arguments to get_next_sequence_value
+struct seq_next_val_thd {
+    char *name;
+    void *ack_handle;
+    bdb_state_type *bdb_state;
+};
+
+/**
+ * Get sequence value and ack
+ *
+ * Generate a sequence value and return it with an ack to the original
+ * requestor. This is done in a seperate thread so aquiring the lock_key doesn't
+ * block the reader thread.
+ */
+void *get_next_sequence_value(void *arg)
+{
+    struct seq_next_val_thd *args = arg;
+    void *ack_handle = args->ack_handle;
+    char *name = args->name;
+    long long value;
+
+    // Init bdb locks
+    bdb_thread_event(args->bdb_state, BDBTHR_EVENT_START_RDWR);
+
+    // Generate value
+    int rc = seq_next_val(NULL, name, &value);
+    free(name);
+
+    if (rc) {
+        logmsg(LOGMSG_ERROR, "%s returning bad rcode because i could not "
+                             "generate sequence value\n",
+               __func__);
+        net_ack_message(ack_handle, 5);
+        ack_handle == NULL;
+        return NULL;
+    }
+
+    // Pack sequence number
+    uint8_t buf[sizeof(long long)];
+    uint8_t *p_buf, *p_buf_end;
+    p_buf = buf;
+    p_buf_end = p_buf + sizeof(long long);
+
+    if (sequence_num_response_put(&value, p_buf, p_buf_end) == NULL) {
+        logmsg(LOGMSG_ERROR,
+               "%s returning bad rcode because i can't pack sequence value\n",
+               __func__);
+        net_ack_message(ack_handle, 6);
+        ack_handle == NULL;
+
+        // Call bdb destructor
+        bdb_thread_event(args->bdb_state, BDBTHR_EVENT_DONE_RDWR);
+        free(args);
+        return NULL;
+    }
+
+    // Ack message with sequence num as payload
+    net_ack_message_payload(ack_handle, 0, buf, sizeof(long long));
+    ack_handle == NULL;
+
+    // Call bdb destructor
+    bdb_thread_event(args->bdb_state, BDBTHR_EVENT_DONE_RDWR);
+    free(args);
+}
+
+/**
+ * Net Message handler for sequence number requests from reps
+ *
+ * Generates a sequence number for sequence specified in payload
+ * and returns to requestor
+ *
+ */
+void receive_sequence_num_request(void *ack_handle, void *usr_ptr,
+                                  char *from_host, int usertype, void *dta,
+                                  int dtalen, uint8_t is_tcp)
+{
+    bdb_state_type *bdb_state = usr_ptr;
+    repinfo_type *repinfo = bdb_state->repinfo;
+
+    if (bdb_state->parent) bdb_state = bdb_state->parent;
+
+    if (repinfo->master_host != repinfo->myhost) {
+        logmsg(LOGMSG_ERROR, "%s returning bad rcode because i am not master\n",
+               __func__);
+        net_ack_message(ack_handle, 1);
+        ack_handle == NULL;
+        return;
+    }
+
+    if (bdb_state->attr->master_lease &&
+        !verify_master_leases(bdb_state, __func__, __LINE__)) {
+        logmsg(LOGMSG_ERROR,
+               "%s returning bad rcode because i don't have enough "
+               "leases\n",
+               __func__);
+        net_ack_message(ack_handle, 2);
+        ack_handle == NULL;
+        return;
+    }
+
+    // Unpack sequence name
+    char *name = malloc(sizeof(char) * MAXTABLELEN);
+    if (name == NULL) {
+        logmsg(LOGMSG_ERROR, "%s returning bad rcode because i can't allocate "
+                             "mem for sequence name\n",
+               __func__);
+        net_ack_message(ack_handle, 3);
+        ack_handle == NULL;
+        return;
+    }
+
+    const uint8_t *p_buf_req = (uint8_t *)dta;
+    const uint8_t *p_buf_end_req = p_buf_req + MAXTABLELEN;
+
+    if ((sequence_num_request_get(name, p_buf_req, p_buf_end_req)) == NULL) {
+        logmsg(LOGMSG_ERROR,
+               "%s returning bad rcode because i can't unpack sequence name\n",
+               __func__);
+        net_ack_message(ack_handle, 3);
+        ack_handle == NULL;
+        return;
+    }
+
+    // Generate value from seq_next_val in a new thread
+    struct seq_next_val_thd *args = malloc(sizeof(struct seq_next_val_thd));
+    args->name = name;
+    args->ack_handle = ack_handle;
+    args->bdb_state = bdb_state;
+    pthread_t tid;
+
+    if (pthread_create(&tid, NULL, get_next_sequence_value, args)) {
+        logmsg(LOGMSG_ERROR,
+               "%s returning bad rcode because thread could not be created\n",
+               __func__);
+        net_ack_message(ack_handle, 4);
+        ack_handle == NULL;
+        return;
+    }
+}
+
+/**
+ * Requests a sequence number from master
+ *
+ * If master, generate sequence number and return
+ * If not master, send message to master with the desired sequence
+ * name and wait for an ack with the sequence number
+ *
+ */
+int request_sequence_num_from_master(bdb_state_type *bdb_state,
+                                     const char *name_in, long long *val)
+{
+    const uint8_t *p_buf, *p_buf_end;
+    uint8_t *buf = NULL;
+    int buflen = 0;
+    int waitms = 1000;
+    int rc;
+    uint64_t start_time, end_time;
+    char *name = strdup(name_in);
+
+    if (bdb_state->repinfo->master_host == bdb_state->repinfo->myhost) {
+        // I am master, generate and return value
+        if (bdb_state->attr->master_lease &&
+            !verify_master_leases(bdb_state, __func__, __LINE__)) {
+            logmsg(LOGMSG_ERROR, "%s line %d failed verifying master leases\n",
+                   __func__, __LINE__);
+            return -2;
+        }
+
+        // Generate sequence value
+        rc = seq_next_val(NULL, name, val);
+
+        if (rc) {
+            logmsg(LOGMSG_ERROR, "%s returning bad rcode because i could not "
+                                 "generate sequence value\n",
+                   __func__);
+            return -1;
+        }
+
+        return 0;
+    }
+
+    // I am not master, contact master for value
+    // Pack sequence name
+    char data[MAXTABLELEN] = {0};
+    uint8_t *p_buf_req = data;
+    const uint8_t *p_buf_end_req = p_buf_req + MAXTABLELEN;
+
+    if ((p_buf_req = sequence_num_request_put(name, p_buf_req,
+                                              p_buf_end_req)) == NULL) {
+        logmsg(LOGMSG_ERROR,
+               "%s returning bad rcode because i can't pack sequence name\n",
+               __func__);
+        return -1;
+    }
+
+    // Send message to master
+    start_time = gettimeofday_ms();
+    if ((rc = net_send_message_payload_ack(
+             bdb_state->repinfo->netinfo_signal,
+             bdb_state->repinfo->master_host, USER_TYPE_REQ_SEQUENCE_NUM,
+             (void *)&data, MAXTABLELEN, (uint8_t **)&buf, &buflen, 1,
+             waitms)) != 0) {
+        end_time = gettimeofday_ms();
+
+        if (rc == NET_SEND_FAIL_TIMEOUT) {
+            logmsg(
+                LOGMSG_WARN,
+                "%s line %d: timed out waiting for sequence num from master %s "
+                "after %u ms\n",
+                __func__, __LINE__, bdb_state->repinfo->master_host,
+                end_time - start_time);
+        } else {
+            logmsg(LOGMSG_USER,
+                   "%s line %d: net_send_message_payload_ack returns %d\n",
+                   __func__, __LINE__, rc);
+        }
+
+        return rc;
+    }
+
+    // Check payload size
+    if (buflen < sizeof(long long)) {
+        logmsg(LOGMSG_ERROR,
+               "%s line %d: payload size to small: len is %d, i want"
+               " at least %d\n",
+               __func__, __LINE__, buflen, sizeof(long long));
+        if (buf) free(buf);
+
+        return -1;
+    }
+
+    // Unpack sequence number
+    long long value;
+    p_buf = buf;
+    p_buf_end = p_buf + buflen;
+
+    if (!(p_buf = sequence_num_response_get(&value, p_buf, p_buf_end))) {
+        logmsg(LOGMSG_ERROR, "%s line %d error unpacking sequence value\n",
+               __func__, __LINE__);
+        if (buf) free(buf);
+
+        return -2;
+    }
+    free(buf);
+
+    // Return value from master
+    *val = value;
+    return 0;
 }
 
 void receive_coherency_lease(void *ack_handle, void *usr_ptr, char *from_host,
@@ -4220,6 +4515,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         /* This version of comdb2 shouldn't be getting these messages */
         if (ack_handle) {
             net_ack_message(ack_handle, 0);
+            ack_handle = NULL;
         }
         break;
 
@@ -4227,6 +4523,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         /* This version of comdb2 shouldn't be getting these messages */
         if (ack_handle) {
             net_ack_message(ack_handle, 0);
+            ack_handle = NULL;
         }
         break;
 
@@ -4238,6 +4535,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         print(bdb_state, "not adding node %d to sanctioned list\n", node);
         // net_add_to_sanctioned(bdb_state->repinfo->netinfo, "", 0);
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_ADD_NAME:
@@ -4245,6 +4543,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         net_add_to_sanctioned(bdb_state->repinfo->netinfo, intern((char *)dta),
                               0);
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_DEL:
@@ -4255,6 +4554,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         print(bdb_state, "removing node %d from sanctioned list\n", node);
         // net_del_from_sanctioned(bdb_state->repinfo->netinfo, node);
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_DEL_NAME:
@@ -4263,6 +4563,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         net_del_from_sanctioned(bdb_state->repinfo->netinfo,
                                 intern((char *)dta));
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_DECOM_NAME: {
@@ -4273,6 +4574,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         logmsg(LOGMSG_DEBUG, "acking message\n");
 
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         host = intern((char *)dta);
 
         osql_decom_node(host);
@@ -4284,6 +4586,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
     case USER_TYPE_ADD_DUMMY:
         add_dummy(bdb_state);
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_TRANSFERMASTER:
@@ -4306,6 +4609,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
 
         /* Don't ack this - if we get this message we want an election. */
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_LSNCMP: {
@@ -4327,6 +4631,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         /* if he's ahead he's good */
         if (log_compare(&lsn_cmp.lsn, &cur_lsn) >= 0) {
             net_ack_message(ack_handle, 0);
+            ack_handle = NULL;
             break;
         }
 
@@ -4345,6 +4650,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         } else {
             net_ack_message(ack_handle, 0);
         }
+        ack_handle = NULL;
         break;
     }
 
@@ -4359,6 +4665,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         bdb_state->rep_trace = on_off;
 
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_INPROCMSG:
@@ -4371,6 +4678,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         else
             net_ack_message(ack_handle, 0);
 
+        ack_handle = NULL;
         break;
 
     case USER_TYPE_DOWNGRADEANDLOSE: {
@@ -4380,6 +4688,7 @@ void berkdb_receive_msg(void *ack_handle, void *usr_ptr, char *from_host,
         }
 
         net_ack_message(ack_handle, 0);
+        ack_handle = NULL;
     } break;
 
     case USER_TYPE_TCP_TIMESTAMP:
@@ -4424,6 +4733,7 @@ void berkdb_receive_test(void *ack_handle, void *usr_ptr, char *from_host,
     logmsg(LOGMSG_USER, "got req from %s\n", from_host);
 
     net_ack_message(ack_handle, 0);
+    ack_handle = NULL;
 }
 
 static void udppfault_do_work_pp(struct thdpool *pool, void *work,
@@ -5608,6 +5918,7 @@ done:
      * does. */
     if (ack_handle)
         net_ack_message(ack_handle, 0);
+    ack_handle = NULL;
 }
 
 /* Don't allow a snapshot txn to start until lsn that the snapshot 
